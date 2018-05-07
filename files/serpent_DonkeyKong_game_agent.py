@@ -32,29 +32,38 @@ class SerpentDonkeyKongGameAgent(GameAgent):
         # Temp flags
         self.isInit = False
 
+        np.set_printoptions(suppress=True)
+
     def setup_play(self):
         pass
 
     def handle_play(self, game_frame):
         if (self.isInit):
+            distances = self.game.api.get_distance_vector(game_frame)
             reduced_frame, units_array = self.game.api.get_mario_frame(game_frame)
             if (reduced_frame != None):
-                nx, ny = units_array.shape
-                units_array = units_array.reshape(nx * ny)
-                res = self.mlp.predict([units_array])
-                print(units_array)
+                #nx, ny = units_array.shape
+                #units_array = units_array.reshape(nx * ny)
+                #res = self.mlp.predict([units_array])
+                nx = distances.shape
+                print(distances)
+                res = self.mlp.predict([distances])
+                #print(units_array)
                 print(res)
         else :
             reduced_frame, units_array = self.game.api.get_mario_frame(game_frame)
             if (reduced_frame != None):
                 nx, ny = units_array.shape
-                self.X = np.zeros(nx*ny)
+                #self.X = np.zeros(nx*ny)
+                self.X = np.zeros(22)
+                #print("nx  " + str(self.X.shape))
 
                 coefs = []
                 intercepts = []
 
                 n_layers = np.random.randint(4)+2
-                n_previous_neurons = nx * ny
+                #n_previous_neurons = nx * ny
+                n_previous_neurons = 22
 
                 for i in range(0, n_layers-1):
                     n_neurons = np.random.randint(5)+1
