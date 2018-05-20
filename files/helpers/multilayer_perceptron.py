@@ -87,11 +87,14 @@ class UntrainedMLPClassifier(MLPClassifier):
             self.out_activation_ = 'logistic'
 
     def predict(self, X):
+        check_is_fitted(self, "coefs_")
         y_pred = self._predict(X)
 
         if self.n_outputs_ == 1:
             y_pred = y_pred.ravel()
 
+        print(self._label_binarizer.classes_)
+        print(y_pred)
         return self._label_binarizer.inverse_transform(y_pred)
 
     def prepare(self, X, y, coefficients, thresholds):

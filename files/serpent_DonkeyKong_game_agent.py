@@ -5,7 +5,7 @@ import sys
 
 import numpy as np
 
-from .helpers.multilayer_perceptron import UntrainedMLPClassifier
+from .helpers.neuro_evolution import NEAT
 
 
 class SerpentDonkeyKongGameAgent(GameAgent):
@@ -20,91 +20,59 @@ class SerpentDonkeyKongGameAgent(GameAgent):
         self.analytics_client = None
 
         # Genetic algorithms parameters
-        self.population = 4
         self.evaluated_individuals = 0
-
-        # MLP
-        self.mlp = UntrainedMLPClassifier()
-        self.X = None;
-        self.input_keys = {"LEFT": KeyboardKey.KEY_LEFT, "RIGHT": KeyboardKey.KEY_RIGHT, "UP": KeyboardKey.KEY_UP, "X": KeyboardKey.KEY_X}
-        self.y = list(self.input_keys.keys())
-
-        # Temp flags
-        self.isInit = False
-
-        np.set_printoptions(suppress=True)
+        self.neat = NEAT(5)
+        self.old_keys = [0,0,0,0,0]
+        self.input_keys = {0: KeyboardKey.KEY_LEFT, 1: KeyboardKey.KEY_RIGHT, 2: KeyboardKey.KEY_UP, 3: KeyboardKey.KEY_DOWN, 4: KeyboardKey.KEY_X}
 
     def setup_play(self):
         pass
 
     def handle_play(self, game_frame):
-        if (self.isInit):
-            distances = self.game.api.get_distance_vector(game_frame)
-            reduced_frame, units_array = self.game.api.get_mario_frame(game_frame)
-            if (reduced_frame != None):
-                #nx, ny = units_array.shape
-                #units_array = units_array.reshape(nx * ny)
-                #res = self.mlp.predict([units_array])
-                nx = distances.shape
-                print(distances)
-                res = self.mlp.predict([distances])
-                #print(units_array)
-                print(res)
-        else :
-            reduced_frame, units_array = self.game.api.get_mario_frame(game_frame)
-            if (reduced_frame != None):
-                nx, ny = units_array.shape
-                #self.X = np.zeros(nx*ny)
-                self.X = np.zeros(22)
-                #print("nx  " + str(self.X.shape))
-
-                coefs = []
-                intercepts = []
-
-                n_layers = np.random.randint(4)+2
-                #n_previous_neurons = nx * ny
-                n_previous_neurons = 22
-
-                for i in range(0, n_layers-1):
-                    n_neurons = np.random.randint(5)+1
-                    coefs.append(np.random.rand(n_previous_neurons, n_neurons))
-                    intercepts.append(np.random.rand(1, n_neurons))
-                    n_previous_neurons = n_neurons
-
-                coefs.append(np.random.rand(n_previous_neurons, 4))
-                intercepts.append(np.random.rand(1, 4))
-
-                self.mlp.prepare([self.X, self.X, self.X, self.X], self.y, coefs, intercepts)
-                self.isInit = True
-
-    def naivgation_handle_play(self, game_frame):
         if (self.game.api.not_running()):
-            print("not running")
             self.game.api.run()
-        else:
-            if (self.evaluated_individuals >= self.population):
-                self.game.api.analyze_frame(game_frame)
-                if (self.evaluated_individuals % 3 == 0):
-                    print("end generation")
-                    sys.exit()
+        else :
+            locations = self.game.api.analyze_frame(game_frame)
+            if (self.neat.generation_finished()):
+                if (self.evaluated_individuals %3 == 0):
+                    self.neat.next_generation()
                 elif (self.game.api.is_dead()):
-                    print("Fake individual")
                     self.evaluated_individuals = self.evaluated_individuals + 1
                     self.game.api.replay()
-            else:
-                self.game.api.analyze_frame(game_frame)
+            else :
                 if (self.game.api.is_in_menu()):
-                    frame, units = self.game.api.get_mario_frame(game_frame)
+                    self.input_controller.tap_key(KeyboardKey.KEY_R)
                     self.game.api.next()
-                    if (frame != None):
-                        print("DEMO")
+                    self.neat.prepare_next()
+                    if (locations[0] != None):
                         self.input_controller.tap_key(KeyboardKey.KEY_SPACE)
                     self.input_controller.tap_key(KeyboardKey.KEY_ENTER)
                     self.input_controller.tap_key(KeyboardKey.KEY_SPACE)
                     self.input_controller.tap_key(KeyboardKey.KEY_ENTER)
                 elif (self.game.api.is_playing()):
-                    print("playing")
-                elif(self.game.api.is_dead()):
-                    print("Evaluate")
+                    reduced_frame, projection_matrix = self.game.api.get_projection_matrix(game_frame, locations[0])
+                    keys = self.neat.feed(projection_matrix)
+                    self._press_keys(keys)
+                    self.old_keys = keys
+                elif (self.game.api.is_dead()):
+                    position_dead = self.game.api.get_position_dead(game_frame)
+                    self.neat.fitness(position_dead)
                     self.evaluated_individuals = self.evaluated_individuals + 1
                     self.game.api.replay()
+                elif (self.game.api.has_won()):
+                    keys = [0,0,0,0,0]
+                    self._press_keys(keys)
+                    self.old_keys = keys
+                    self.input_controller.tap_key(KeyboardKey.KEY_R, duration=0.5)
+                    self.game.api.run()
+                    self.neat.fitness(locations[0])
+                    self.evaluated_individuals = 0
+
+    def _press_keys(self, keys):
+        for i in range(len(keys)-1):
+            if (keys[i] == 1 and self.old_keys[i] == 0):
+                self.input_controller.press_key(self.input_keys[i])
+            elif (keys[i] == 0 and self.old_keys[i] == 1) :
+                self.input_controller.release_key(self.input_keys[i])
+        if (keys[len(keys)-1] == 1):
+            self.input_controller.tap_key(self.input_keys[len(keys)-1])
