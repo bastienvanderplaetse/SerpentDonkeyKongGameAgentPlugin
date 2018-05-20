@@ -154,7 +154,7 @@ class NEAT():
 		self.pool["currentSpecies"] = 0
 		self.pool["currentGenome"] = 0
 		self.pool["currentFrame"] = 0
-		self.pool["maxFitness"] = 0
+		self.pool["maxFitness"] = -1000000
 
 	def _basic_genome(self):
 		genome = self._new_genome()
@@ -168,7 +168,7 @@ class NEAT():
 	def _new_genome(self):
 		genome = dict()
 		genome["genes"] = []
-		genome["fitness"] = 0
+		genome["fitness"] = -1000000
 		genome["adjustedFitness"] = 0
 		genome["network"] = dict()
 		genome["maxneuron"] = 0
@@ -370,10 +370,10 @@ class NEAT():
 
 	def _new_species(self):
 		species = dict()
-		species["topFitness"] = 0
+		species["topFitness"] = -1000000
 		species["staleness"] = 0
 		species["genomes"] = []
-		species["averageFitness"] = 0
+		species["averageFitness"] = -1000000
 	
 		return species
 
@@ -424,8 +424,8 @@ class NEAT():
 	def prepare_next(self):
 		current_species = self.pool["currentSpecies"]
 		current_genome = self.pool["currentGenome"]
-
-		for i in range(3):
+		counter = 0
+		while (counter != 3):#for i in range(3):
 			if (current_genome >= len(self.pool["species"][current_species]["genomes"])):
 				current_species = current_species + 1
 				current_genome = 0
@@ -435,7 +435,9 @@ class NEAT():
 
 			current = self.pool["species"][current_species]["genomes"][current_genome]
 			current_genome = current_genome + 1
-			self._generate_network(current)
+			if (current["fitness"] == -1000000):
+				self._generate_network(current)
+				counter = counter + 1
 
 	def _generate_network(self, genome):
 		network = dict()
@@ -516,15 +518,26 @@ class NEAT():
 		if (genome["fitness"] > self.pool["maxFitness"]):
 			self.pool["maxFitness"] = genome["fitness"]
 
-		self.pool["currentGenome"] = self.pool["currentGenome"] + 1
-		if (self.pool["currentGenome"] >= len(self.pool["species"][self.pool["currentSpecies"]]["genomes"])):
-			self.pool["currentGenome"] = 0
-			self.pool["currentSpecies"] = self.pool["currentSpecies"] + 1
+		current = genome
+		first = True
+		while (current["fitness"] != -1000000):
+			if (first):
+				first = False
+			else :
+				print("Gen " + str(self.pool["generation"]) + " - Specie " + str(self.pool["currentSpecies"]) + " - Ind " + str(self.pool["currentGenome"]) + " - Score : " + str(current["fitness"]) + " (!)")
+			self.pool["currentGenome"] = self.pool["currentGenome"] + 1
+			if (self.pool["currentGenome"] >= len(self.pool["species"][self.pool["currentSpecies"]]["genomes"])):
+				self.pool["currentGenome"] = 0
+				self.pool["currentSpecies"] = self.pool["currentSpecies"] + 1
 
-		if (self.pool["currentSpecies"] >= len(self.pool["species"])):
-			self.pool["currentSpecies"] = 0
-			self.generation_evaluated = True
-		else :
+			if (self.pool["currentSpecies"] >= len(self.pool["species"])):
+				self.pool["currentSpecies"] = 0
+				self.generation_evaluated = True
+				break
+
+			current = self.pool["species"][self.pool["currentSpecies"]]["genomes"][self.pool["currentGenome"]]
+		
+		if (not self.generation_evaluated):
 			print("Gen " + str(self.pool["generation"]) + " - Specie " + str(self.pool["currentSpecies"]) + " - Ind " + str(self.pool["currentGenome"]) + " - Score : ", end='', flush=True)
 
 	def generation_finished(self):
@@ -558,7 +571,23 @@ class NEAT():
 	
 		self.pool["generation"] = self.pool["generation"] + 1
 		self.generation_evaluated = False
-		print("Gen " + str(self.pool["generation"]) + " - Specie " + str(self.pool["currentSpecies"]) + " - Ind " + str(self.pool["currentGenome"]) + " - Score : ", end='', flush=True)
+
+		current = self.pool["species"][self.pool["currentSpecies"]]["genomes"][self.pool["currentGenome"]]
+		while (current["fitness"] != -1000000):
+			print("Gen " + str(self.pool["generation"]) + " - Specie " + str(self.pool["currentSpecies"]) + " - Ind " + str(self.pool["currentGenome"]) + " - Score : " + str(current["fitness"]) + " (!)")
+			self.pool["currentGenome"] = self.pool["currentGenome"] + 1
+			if (self.pool["currentGenome"] >= len(self.pool["species"][self.pool["currentSpecies"]]["genomes"])):
+				self.pool["currentGenome"] = 0
+				self.pool["currentSpecies"] = self.pool["currentSpecies"] + 1
+
+			if (self.pool["currentSpecies"] >= len(self.pool["species"])):
+				self.pool["currentSpecies"] = 0
+				self.generation_evaluated = True
+				break
+
+			current = self.pool["species"][self.pool["currentSpecies"]]["genomes"][self.pool["currentGenome"]]
+		if (not self.generation_evaluated):
+			print("Gen " + str(self.pool["generation"]) + " - Specie " + str(self.pool["currentSpecies"]) + " - Ind " + str(self.pool["currentGenome"]) + " - Score : ", end='', flush=True)
 
 	def _cull_species(self, cut_to_one):
 		for species in self.pool["species"]:
