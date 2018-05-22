@@ -25,6 +25,9 @@ class SerpentDonkeyKongGameAgent(GameAgent):
         self.old_keys = [0,0,0,0,0]
         self.input_keys = {0: KeyboardKey.KEY_LEFT, 1: KeyboardKey.KEY_RIGHT, 2: KeyboardKey.KEY_UP, 3: KeyboardKey.KEY_DOWN, 4: KeyboardKey.KEY_X}
 
+        self.counter = 0
+        self.old_posX = 0
+
     def setup_play(self):
         pass
 
@@ -49,11 +52,29 @@ class SerpentDonkeyKongGameAgent(GameAgent):
                     self.input_controller.tap_key(KeyboardKey.KEY_ENTER)
                     self.input_controller.tap_key(KeyboardKey.KEY_SPACE)
                     self.input_controller.tap_key(KeyboardKey.KEY_ENTER)
+                    self.old_posX = 0
+                    self.counter = 0
                 elif (self.game.api.is_playing()):
                     reduced_frame, projection_matrix = self.game.api.get_projection_matrix(game_frame, locations[0])
                     keys = self.neat.feed(projection_matrix)
                     self._press_keys(keys)
                     self.old_keys = keys
+                    if(keys == [0,0,0,0,0] or (locations[0] != None and projection_matrix[len(projection_matrix)-1] != 3 and  abs(self.old_posX-locations[0][1]) <= 5)):
+                        self.counter = self.counter + 1
+                        if(self.counter == 7):
+                            self.game.api.win()
+                            keys = [0,0,0,0,0]
+                            self._press_keys(keys)
+                            self.old_keys = keys
+                            self.input_controller.tap_key(KeyboardKey.KEY_R, duration=0.5)
+                            self.game.api.run()
+                            score = self.game.api.get_final_position(locations[0])
+                            self.neat.fitness(score)
+                            self.evaluated_individuals = 0
+                    else :
+                        self.counter = 0
+                        if (locations[0] != None):
+                            self.old_posX = locations[0][1]
                 elif (self.game.api.is_dead()):
                     position_dead = self.game.api.get_position_dead(game_frame)
                     self.neat.fitness(position_dead)
@@ -65,7 +86,7 @@ class SerpentDonkeyKongGameAgent(GameAgent):
                     self.old_keys = keys
                     self.input_controller.tap_key(KeyboardKey.KEY_R, duration=0.5)
                     self.game.api.run()
-                    self.neat.fitness(locations[0])
+                    self.neat.fitness([0,6000])
                     self.evaluated_individuals = 0
 
     def _press_keys(self, keys):

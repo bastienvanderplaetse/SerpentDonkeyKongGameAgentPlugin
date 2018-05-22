@@ -512,7 +512,7 @@ class NEAT():
 		species = self.pool["species"][self.pool["currentSpecies"]]
 		genome = species["genomes"][self.pool["currentGenome"]]
 		
-		genome["fitness"] = 4 * mario_positions[1] - mario_positions[0]
+		genome["fitness"] = mario_positions[1] - mario_positions[0] #4 * mario_positions[1] - mario_positions[0]
 		print(str(genome["fitness"]))
 
 		if (genome["fitness"] > self.pool["maxFitness"]):
