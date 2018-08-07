@@ -2,10 +2,12 @@ import numpy as np
 import json
 import math
 from xml.dom import minidom
+import copy
 
 
 class NEAT():
 	def __init__(self, output_size):
+		np.random.seed(19940209)
 		try:
 			doc = minidom.parse('plugins/SerpentDonkeyKongGameAgentPlugin/files/helpers/neat_config.xml')
 
@@ -40,6 +42,10 @@ class NEAT():
 		self.TIMEOUT_CONSTANT = int(doc.getElementsByTagName("timeout_constant")[0].firstChild.nodeValue.strip()) #20
 
 		self.MAX_NODES = int(doc.getElementsByTagName("max_nodes")[0].firstChild.nodeValue.strip()) #1000000
+
+		self.INITIAL_INPUT = np.zeros(self.INPUT_SIZE)
+		self.INITIAL_INPUT[12] = 1
+		self.INITIAL_INPUT[len(self.INITIAL_INPUT)-1] = 1
 
 		start_with_gen = int(doc.getElementsByTagName("start_with_gen")[0].firstChild.nodeValue.strip())
 
@@ -425,7 +431,7 @@ class NEAT():
 		current_species = self.pool["currentSpecies"]
 		current_genome = self.pool["currentGenome"]
 		counter = 0
-		while (counter != 3):#for i in range(3):
+		while (counter != 1):#for i in range(3):
 			if (current_genome >= len(self.pool["species"][current_species]["genomes"])):
 				current_species = current_species + 1
 				current_genome = 0
@@ -437,7 +443,24 @@ class NEAT():
 			current_genome = current_genome + 1
 			if (current["fitness"] == -1000000):
 				self._generate_network(current)
-				counter = counter + 1
+				keys = self._evaluate_network(copy.deepcopy(current["network"]), self.INITIAL_INPUT)
+
+				if(keys[2] == 1):
+					current["fitness"] = -308
+				elif (keys[1] == 0):
+					if (keys[0] == 0):
+						current["fitness"] = -308
+					else:
+						current["fitness"] = -381
+				else :
+					counter = counter + 1
+
+				# if (keys[0] == 0 and keys[1] == 0):#if (keys == [0,0,0,0,0]):
+				# 	current["fitness"] = -311.0
+				# elif (keys[0] == 1 and keys[1] == 0):
+				# 	current["fitness"] = -330.0
+				# else:
+				# 	counter = counter + 1
 
 	def _generate_network(self, genome):
 		network = dict()
@@ -473,8 +496,8 @@ class NEAT():
 		species = self.pool["species"][self.pool["currentSpecies"]]
 		genome = species["genomes"][self.pool["currentGenome"]]
 
-		keys = self._evaluate_network(genome["network"], inputs)
-
+		keys = self._evaluate_network(copy.deepcopy(genome["network"]), inputs)
+		
 		return keys
 
 	def _evaluate_network(self, network, inputs):
@@ -508,11 +531,12 @@ class NEAT():
 	def _sigmoid(self, x):
 		return 2/(1+math.exp(-4.9*x))-1
 
-	def fitness(self, mario_positions):
+	def fitness(self, scores):
 		species = self.pool["species"][self.pool["currentSpecies"]]
 		genome = species["genomes"][self.pool["currentGenome"]]
 		
-		genome["fitness"] = mario_positions[1] - mario_positions[0] #4 * mario_positions[1] - mario_positions[0]
+		#genome["fitness"] = min(scores[0], 50) + scores[1] * 200 + scores[2] * 100 + scores[3]#mario_positions[1] - mario_positions[0] #4 * mario_positions[1] - mario_positions[0]
+		genome["fitness"] = 1000 * scores[0] + scores[1] + 100 * scores[2] - 10 * scores[3] + 500 * scores[4]
 		print(str(genome["fitness"]))
 
 		if (genome["fitness"] > self.pool["maxFitness"]):
