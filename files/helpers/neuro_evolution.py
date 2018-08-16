@@ -431,7 +431,8 @@ class NEAT():
 		current_species = self.pool["currentSpecies"]
 		current_genome = self.pool["currentGenome"]
 		counter = 0
-		while (counter != 1):#for i in range(3):
+		has_created = False
+		while (not has_created):
 			if (current_genome >= len(self.pool["species"][current_species]["genomes"])):
 				current_species = current_species + 1
 				current_genome = 0
@@ -454,13 +455,7 @@ class NEAT():
 						current["fitness"] = -381
 				else :
 					counter = counter + 1
-
-				# if (keys[0] == 0 and keys[1] == 0):#if (keys == [0,0,0,0,0]):
-				# 	current["fitness"] = -311.0
-				# elif (keys[0] == 1 and keys[1] == 0):
-				# 	current["fitness"] = -330.0
-				# else:
-				# 	counter = counter + 1
+					has_created = True
 
 	def _generate_network(self, genome):
 		network = dict()
@@ -535,7 +530,6 @@ class NEAT():
 		species = self.pool["species"][self.pool["currentSpecies"]]
 		genome = species["genomes"][self.pool["currentGenome"]]
 		
-		#genome["fitness"] = min(scores[0], 50) + scores[1] * 200 + scores[2] * 100 + scores[3]#mario_positions[1] - mario_positions[0] #4 * mario_positions[1] - mario_positions[0]
 		genome["fitness"] = 1000 * scores[0] + scores[1] + 100 * scores[2] - 10 * scores[3] + 500 * scores[4]
 		print(str(genome["fitness"]))
 
